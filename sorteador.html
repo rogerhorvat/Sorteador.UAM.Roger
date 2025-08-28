@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sorteador de Apresentações</title>
+    <style>
+        /* Paleta de Cores - Anhembi Morumbi (baseado no logo oficial) */
+        :root {
+            --am-green: #008779; /* Verde esmeralda/azul esverdeado do logo */
+            --am-dark-gray: #4A4A4A; /* Cinza escuro do texto "Universidade Anhembi Morumbi" */
+            --am-medium-gray: #808080; /* Para textos secundários */
+            --am-light-gray-bg: #f8f8f8; /* Fundo suave, próximo ao branco do logo */
+            --am-white: #ffffff;
+            --am-hover-green: #006b5b; /* Tom mais escuro para efeito hover do verde */
+        }
+
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+            max-width: 90%; 
+            margin: 20px auto; 
+            background-color: var(--am-light-gray-bg); 
+            color: var(--am-dark-gray); 
+            line-height: 1.6; 
+        }
+
+        h1 { text-align: center; color: var(--am-dark-gray); font-size: 2.2em; margin-bottom: 25px; }
+        h2, h3 { text-align: center; color: var(--am-dark-gray); margin-bottom: 15px; }
+
+        .container, .painel { 
+            border: 1px solid #e0e0e0; 
+            padding: 20px; 
+            margin-bottom: 20px; 
+            border-radius: 8px; 
+            background-color: var(--am-white); 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.08); 
+        }
+
+        input[type="text"] { 
+            width: calc(100% - 24px); 
+            padding: 12px; 
+            font-size: 16px; 
+            border: 1px solid #ccc; 
+            border-radius: 4px; 
+        }
+        input[type="text"]:focus {
+            border-color: var(--am-green);
+            outline: none;
+        }
+
+        /* Botões de ação principal em verde do logo */
+        button { 
+            width: 100%; 
+            padding: 15px; 
+            margin-top: 15px; 
+            font-size: 18px; 
+            font-weight: bold; 
+            color: var(--am-white); 
+            background-color: var(--am-green); 
+            border: none; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            transition: background-color 0.2s ease-in-out; 
+        }
+        button:hover { background-color: var(--am-hover-green); }
+
+        /* Botão secundário em cinza escuro do texto */
+        button.secundario { 
+            background-color: var(--am-dark-gray); 
+            font-size: 14px; 
+            padding: 10px; 
+        }
+        button.secundario:hover { background-color: #333333; }
+        button:disabled { background-color: #cccccc; color: #f0f0f0; cursor: not-allowed; }
+
+        /* Destaque para o grupo sorteado */
+        #resultado { 
+            font-size: 1.5em; /* Reduzido para caber o texto do tema */
+            font-weight: bold; 
+            text-align: center; 
+            color: var(--am-green); /* Cor do logo para destaque */
+            margin: 30px 0; /* Mais espaçamento */
+            min-height: 90px; /* Garante espaço para duas linhas */
+            display: flex; /* Para centralizar vertical e horizontalmente */
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            line-height: 1.4;
+        }
+        
+        #resultado strong {
+            font-size: 2em; /* Aumenta apenas a linha do "Grupo X" */
+        }
+
+
+        .contagem-item, .historico-item { padding: 10px 0; border-bottom: 1px solid #eee; font-size: 16px; color: var(--am-medium-gray); }
+        .contagem-item { display: flex; justify-content: space-between; }
+        .contagem-item:last-child, .historico-item:last-child { border-bottom: none; }
+        
+        #painel-conteudo { display: none; margin-top: 20px; }
+    </style>
+</head>
+<body>
+
+    <h1>Sorteador de Apresentações</h1>
+
+    <div class="container" id="container-novo-ciclo">
+        <h2>Iniciar Novo Ciclo</h2>
+        <input type="text" id="dataTurma" placeholder="Digite a data ou nome da turma">
+        <button onclick="iniciarCiclo()">Iniciar Novo Ciclo (apaga o anterior)</button>
+    </div>
+
+    <div class="painel" id="painel-principal" style="display: none;">
+        <h2 id="ciclo-ativo"></h2>
+        <button id="btnSortear" onclick="realizarSorteio()"></button>
+        <div id="resultado"></div>
+        
+        <button id="btnTogglePainel" class="secundario" onclick="togglePainel()">Mostrar Painel de Controle</button>
+        
+        <div id="painel-conteudo">
+            <h3>Painel de Controle</h3>
+            <div id="contagem"></div>
+            <div id="historico" style="margin-top: 20px;"></div>
+        </div>
+    </div>
+
+    <script>
+        // LISTA DE TEMAS ATUALIZADA PARA 9 APRESENTAÇÕES
+        const temas = [
+            "Dor torácica",
+            "Choque",
+            "Insuficiência respiratória",
+            "Alteração do nível de consciência",
+            "AVC",
+            "Síndromes hiperglicêmicas",
+            "Intoxicação exógena",
+            "Conversas difíceis",
+            "Cuidados paliativos na emergência"
+        ];
+
+        let estado = {};
+
+        const dataInput = document.getElementById('dataTurma');
+        const btnSortear = document.getElementById('btnSortear');
+        const btnTogglePainel = document.getElementById('btnTogglePainel');
+        const resultadoDiv = document.getElementById('resultado');
+        const cicloAtivoH2 = document.getElementById('ciclo-ativo');
+        const contagemDiv = document.getElementById('contagem');
+        const historicoDiv = document.getElementById('historico');
+        const painelPrincipal = document.getElementById('painel-principal');
+        const painelConteudo = document.getElementById('painel-conteudo');
+
+        function salvarEstado() { localStorage.setItem('sorteadorEstado', JSON.stringify(estado)); }
+
+        function carregarEstado() {
+            const estadoSalvo = localStorage.getItem('sorteadorEstado');
+            if (estadoSalvo) {
+                estado = JSON.parse(estadoSalvo);
+                if (estado.cicloId) {
+                    painelPrincipal.style.display = 'block';
+                    atualizarPainel();
+                }
+            }
+        }
+        
+        function iniciarCiclo() {
+            if (dataInput.value.trim() === "") {
+                alert("Por favor, digite uma identificação para a turma.");
+                return;
+            }
+            estado = { cicloId: dataInput.value.trim(), urna: [], contagem: { 1: 0, 2: 0, 3: 0, 4: 0 }, apresentacaoAtual: 0, historico: [] };
+            
+            let grupos = [1, 2, 3, 4];
+
+            // LÓGICA DE DISTRIBUIÇÃO ATUALIZADA PARA 9 APRESENTAÇÕES (3, 2, 2, 2)
+            let grupoCom3 = grupos[Math.floor(Math.random() * grupos.length)];
+            for (let i = 1; i <= 4; i++) {
+                let vezes = (i === grupoCom3) ? 3 : 2;
+                for (let j = 0; j < vezes; j++) { 
+                    estado.urna.push(i); 
+                }
+            }
+
+            salvarEstado();
+            atualizarPainel();
+            dataInput.value = "";
+            painelPrincipal.style.display = 'block';
+            resultadoDiv.innerHTML = "Novo ciclo iniciado! Clique no botão acima para o primeiro sorteio.";
+            painelConteudo.style.display = 'none';
+            btnTogglePainel.innerText = 'Mostrar Painel de Controle';
+        }
+
+        function realizarSorteio() {
+            if (estado.urna.length === 0) return;
+            const indiceSorteado = Math.floor(Math.random() * estado.urna.length);
+            const grupoSorteado = estado.urna.splice(indiceSorteado, 1)[0];
+            const temaAtual = temas[estado.apresentacaoAtual];
+            estado.contagem[grupoSorteado]++;
+            estado.historico.push(`${temaAtual}: <strong>Grupo ${grupoSorteado}</strong>`);
+            estado.apresentacaoAtual++;
+
+            // RESULTADO COM O NOVO FORMATO
+            resultadoDiv.innerHTML = `Sorteado para o tema "${temaAtual}":<br><strong>Grupo ${grupoSorteado}</strong>`;
+            
+            salvarEstado();
+            atualizarPainel();
+        }
+
+        function atualizarPainel() {
+            if (!estado.cicloId) return;
+            cicloAtivoH2.innerText = `Ciclo Ativo: ${estado.cicloId}`;
+            
+            contagemDiv.innerHTML = '<h4>Contagem por Grupo:</h4>';
+            for (let i = 1; i <= 4; i++) {
+                contagemDiv.innerHTML += `<div class="contagem-item"><span>Grupo ${i}:</span> <strong>${estado.contagem[i]} vez(es)</strong></div>`;
+            }
+            historicoDiv.innerHTML = '<h4>Histórico de Apresentações:</h4>';
+            if(estado.historico.length > 0) {
+                estado.historico.forEach(item => { historicoDiv.innerHTML += `<div class="historico-item">${item}</div>`; });
+            } else {
+                historicoDiv.innerHTML += `<div class="historico-item">Nenhuma apresentação realizada ainda.</div>`;
+            }
+            if (estado.apresentacaoAtual >= temas.length) {
+                btnSortear.innerText = 'Ciclo Finalizado!';
+                btnSortear.disabled = true;
+                if (!resultadoDiv.innerHTML.includes('Finalizado')) {
+                    resultadoDiv.innerHTML = `Ciclo Finalizado!`;
+                }
+            } else {
+                const proximoTema = temas[estado.apresentacaoAtual];
+                btnSortear.innerText = `Sortear para o tema: "${proximoTema}"`;
+                btnSortear.disabled = false;
+            }
+        }
+        
+        function togglePainel() {
+            const isHidden = painelConteudo.style.display === 'none';
+            if (isHidden) {
+                painelConteudo.style.display = 'block';
+                btnTogglePainel.innerText = 'Ocultar Painel de Controle';
+            } else {
+                painelConteudo.style.display = 'none';
+                btnTogglePainel.innerText = 'Mostrar Painel de Controle';
+            }
+        }
+        
+        window.onload = carregarEstado;
+    </script>
+</body>
+</html>
